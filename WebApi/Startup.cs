@@ -11,10 +11,12 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Newtonsoft.Json;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
+using WebApi.Customs.ActionFilters;
 using WebApi.Data;
 using WebApi.Data.Entities;
 using WebApi.Extensions;
@@ -37,7 +39,12 @@ namespace WebApi
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddHttpContextAccessor();
-            services.AddControllers();
+            services
+                .AddControllers(options =>
+                {
+                    options.Filters.Add(typeof(ValidateModelFilter));
+                })
+                .AddNewtonsoftJson(options => options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore);
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(
                     Configuration.GetConnectionString("DefaultConnection"),
@@ -53,6 +60,7 @@ namespace WebApi
                 options.Password.RequireLowercase = false;
             });
             services.Configure<JWTSettings>(Configuration.GetSection("JWTSettings"));
+            services.Configure<MailSettings>(Configuration.GetSection("MailSettings"));
             services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -157,6 +165,7 @@ namespace WebApi
 
             app.UseErrorHandlingMiddleware();
             app.UseHttpsRedirection();
+            app.UseSerilogRequestLogging();
             app.UseRouting();
             app.UseAuthentication();
             app.UseAuthorization();

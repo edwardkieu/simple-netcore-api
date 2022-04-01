@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Serilog;
 using System;
 using System.Net;
 using System.Text.Json;
@@ -11,6 +12,7 @@ namespace WebApi.Middlewares
     public class ErrorHandlerMiddleware
     {
         private readonly RequestDelegate _next;
+        private static readonly ILogger Log = Serilog.Log.ForContext<ErrorHandlerMiddleware>();
 
         public ErrorHandlerMiddleware(RequestDelegate next)
         {
@@ -40,19 +42,13 @@ namespace WebApi.Middlewares
                         response.StatusCode = (int)HttpStatusCode.BadRequest;
                         break;
 
-                    //case ValidationException ex:
-                    //    // custom application error
-                    //    response.StatusCode = (int)HttpStatusCode.BadRequest;
-                    //    responseModel.Errors = ex.Errors;
-                    //    break;
-
                     default:
                         // unhandled error
                         response.StatusCode = (int)HttpStatusCode.InternalServerError;
                         break;
                 }
-
                 var result = JsonSerializer.Serialize(responseModel);
+                Log.Error(error, result);
                 await response.WriteAsync(result);
             }
         }
